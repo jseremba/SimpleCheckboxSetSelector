@@ -26,7 +26,13 @@ interface SimpleCheckboxSetSelectorContainerProps extends WrapperProps {
     showMore: string;
     editable: "default" | "never";
     onChangeMicroflow: string;
+    onChangeNanoflow: Nanoflow;
     onChangeDelay: string;
+}
+
+interface Nanoflow {
+    nanoflow: object[];
+    paramsSpec: { Progress: string };
 }
 
 interface SimpleCheckboxSetSelectorContainerState {
@@ -120,6 +126,37 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
         } else {
             mxObject.removeReferences(this.reference, [guid]);
         }
+        this.executeAction();
+    }
+
+    private executeAction() {
+        const { mxform, mxObject, onChangeMicroflow, onChangeNanoflow } = this.props;
+        if (mxObject) {
+            if (onChangeMicroflow) {
+                window.mx.ui.action(onChangeMicroflow, {
+                    error: error =>
+                        window.mx.ui.error(`Error while executing microflow: ${onChangeMicroflow}: ${error.message}`),
+                    origin: mxform,
+                    params: {
+                        applyto: "selection",
+                        guids: [mxObject.getGuid()]
+                    }
+                });
+            }
+
+            if (onChangeNanoflow.nanoflow) {
+                const context = new mendix.lib.MxContext();
+                context.setContext(mxObject.getEntity(), mxObject.getGuid());
+                window.mx.data.callNanoflow({
+                    context,
+                    error: error => window.mx.ui.error(
+                        `An error occurred while executing the on change nanoflow: ${error.message}`
+                    ),
+                    nanoflow: onChangeNanoflow,
+                    origin: mxform
+                });
+            }
+        }
     }
 
     private fetchData(contextObject?: mendix.lib.MxObject) {
@@ -151,13 +188,17 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
     }
 
     private getDataFromMicroflow = (contextObject?: mendix.lib.MxObject) => {
-        if (contextObject) {
-            if (this.props.dataSourceMicroflow) {
-                this.executeMicroflow(contextObject, this.props.dataSourceMicroflow);
-            } else {
-                mx.ui.error("Error while retrieving checkbox items via microflow, No microflow is specified");
+        const { dataSourceMicroflow } = this.props;
+            if (contextObject && dataSourceMicroflow) {
+                window.mx.ui.action(dataSourceMicroflow, {
+                    callback: (mxObjects: mendix.lib.MxObject[]) => this.processCheckboxItems(mxObjects),
+                    error: error => window.mx.ui.error(`Error while executing microflow: ${dataSourceMicroflow}: ${error.message}`),
+                    params: {
+                        applyto: "selection",
+                        guids: contextObject ? [contextObject.getGuid()] : []
+                    }
+                });
             }
-        }
     }
 
     private processCheckboxItems = (contextObject: mendix.lib.MxObject[]) => {
@@ -181,18 +222,5 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
             };
         });
         this.setState({ checkboxItems });
-    }
-
-    private executeMicroflow = (contextObject: mendix.lib.MxObject, microflow: string) => {
-        if (microflow) {
-            window.mx.ui.action(microflow, {
-                callback: (mxObjects: mendix.lib.MxObject[]) => this.processCheckboxItems(mxObjects),
-                error: error => window.mx.ui.error(`Error while executing microflow: ${microflow}: ${error.message}`),
-                params: {
-                    applyto: "selection",
-                    guids: contextObject ? [ contextObject.getGuid() ] : []
-                }
-            });
-        }
     }
 }
