@@ -71,11 +71,10 @@
                 <enumerationValue key="never">Never</enumerationValue>
             </enumerationValues>
         </property>
-        <!-- TODO: Rename Caption and key -->
-		<property key="direction" type="enumeration" defaultValue="vertical">
-			<caption>Direction</caption>
+		<property key="alignment" type="enumeration" defaultValue="vertical">
+			<caption>Alignment</caption>
 			<category>Display</category>
-			<description>This field determines the display direction</description>
+			<description>Alignment of the label and the checkbox items</description>
 			<enumerationValues>
 				<enumerationValue key="horizontal">Horizontal</enumerationValue>
 				<enumerationValue key="vertical">Vertical</enumerationValue>
@@ -127,13 +126,13 @@
 		<property key="onChangeMicroflow" type="microflow" required="false">
 			<caption>On change microflow</caption>
 			<category>Events</category>
-			<description>The microflow that will be executed on click when a checkbox item is checked or unchecked</description>
+			<description>The microflow that will be executed onchange when a checkbox item is checked or unchecked</description>
 			<returnType type="Void"/>
 		</property>
         <property key="onChangeNanoflow" type="nanoflow" required="false">
 			<caption>On change nanoflow</caption>
 			<category>Events</category>
-			<description>The nanoflow that will be executed on click when a checkbox item is checked or unchecked</description>
+			<description>The nanoflow that will be executed onchange when a checkbox item is checked or unchecked</description>
 			<returnType type="Void"/>
 		</property>
 		<property key="onChangeDelay" type="integer" defaultValue="0">

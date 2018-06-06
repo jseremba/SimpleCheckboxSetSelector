@@ -1,6 +1,6 @@
 import { Component, createElement } from "react";
 
-import { SimpleCheckboxSetSelector, CheckboxOptions, Direction, SortOrder } from "./SimpleCheckboxSetSelector";
+import { SimpleCheckboxSetSelector, CheckboxOptions, Alignment, SortOrder } from "./SimpleCheckboxSetSelector";
 
 interface WrapperProps {
     "class": string;
@@ -15,20 +15,23 @@ interface SimpleCheckboxSetSelectorContainerProps extends WrapperProps {
     associationReference: string;
     dataSourceMicroflow: string;
     constraint: string;
-    showLabel: string;
+    showLabel: boolean;
     labelCaption: string;
     sortAttribute: string;
     sortOrder: SortOrder;
     labelAttribute: string;
-    formOrientation: string;
-    direction: Direction;
-    labelWidth: string;
+    formOrientation: Alignment;
+    alignment: Alignment;
+    labelWidth: number;
     showMore: string;
     editable: "default" | "never";
     onChangeMicroflow: string;
     onChangeNanoflow: Nanoflow;
     onChangeDelay: string;
+    onChangeEvent: OnChangeOptions;
 }
+
+type OnChangeOptions = "doNothing" | "callMicroflow" | "callNanoflow";
 
 interface Nanoflow {
     nanoflow: object[];
@@ -36,9 +39,10 @@ interface Nanoflow {
 }
 
 interface SimpleCheckboxSetSelectorContainerState {
+    alertMessage: string;
     checkboxItems: CheckboxOptions[];
     isChecked: boolean;
-    alertMessage: string;
+    showLabel: boolean;
 }
 
 export default class SimpleCheckboxSetSelectorContainer extends Component<SimpleCheckboxSetSelectorContainerProps, SimpleCheckboxSetSelectorContainerState> {
@@ -50,22 +54,26 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
         super(props);
 
         this.state = {
-            alertMessage: "",
+            alertMessage: SimpleCheckboxSetSelectorContainer.validateProps(this.props),
             checkboxItems: [],
-            isChecked: false
+            isChecked: false,
+            showLabel: false
         };
 
-        this.entity = this.props.associationReference.split("/")[1];
-        this.reference = this.props.associationReference.split("/")[0];
+        this.entity = this.props.associationReference.split("/")[1];// FIXME:
+        this.reference = this.props.associationReference.split("/")[0];// FIXME:
     }
     render() {
         return createElement(SimpleCheckboxSetSelector, {
             alertMessage: this.state.alertMessage,
-            labelCaption: this.props.labelCaption,
+            alignment: this.props.alignment,
             checkboxItems: this.state.checkboxItems,
-            direction: this.props.direction,
+            formOrientation: this.props.formOrientation,
             handleChange: this.handleChange,
-            readOnly: this.isReadOnly()
+            labelCaption: this.props.labelCaption,
+            labelWidth: this.props.labelWidth,
+            readOnly: this.isReadOnly(),
+            showLabel: this.state.showLabel
         });
     }
 
@@ -74,9 +82,11 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
     }
 
     componentWillReceiveProps(nextProps: SimpleCheckboxSetSelectorContainerProps) {
-        if (nextProps.mxObject !== this.props.mxObject) {
+        if (nextProps.mxObject) {
             this.fetchData(nextProps.mxObject);
             this.resetSubscriptions(nextProps.mxObject);
+        } else {
+            this.setState({ checkboxItems: [], showLabel : false });
         }
     }
 
@@ -106,7 +116,7 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
             this.subscriptionHandles.push(window.mx.data.subscribe({
                 guid: mxObject.getGuid(),
                 attr: this.reference,
-                callback:() => this.fetchData(mxObject)
+                callback: () => this.fetchData(mxObject)
             }));
         }
     }
@@ -119,9 +129,9 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
         }
     }
 
-    private handleChange = (value: boolean, guid: string) => {
+    private handleChange = (isChecked: boolean, guid: string) => {
         const { mxObject } = this.props;
-        if (value && guid) {
+        if (isChecked && guid) {
             mxObject.addReference(this.reference, guid);
         } else {
             mxObject.removeReferences(this.reference, [guid]);
@@ -221,6 +231,20 @@ export default class SimpleCheckboxSetSelectorContainer extends Component<Simple
                 isChecked
             };
         });
-        this.setState({ checkboxItems });
+        this.setState({ checkboxItems, showLabel : this.props.showLabel });
+    }
+
+    public static validateProps(props: SimpleCheckboxSetSelectorContainerProps): string {
+        let errorMessage = "";
+        if (props.onChangeEvent === "callNanoflow" && !props.onChangeMicroflow) {
+            errorMessage = "A 'Microflow' is required for on change event 'Call a microflow'";
+        } else if (props.onChangeEvent === "callNanoflow" && !props.onChangeNanoflow.nanoflow) {
+            errorMessage = "A 'Nanoflow' is required for on change event 'Call a nanoflow'";
+        }
+        if (errorMessage) {
+            errorMessage = `Error in widget configuration: ${errorMessage}`;
+        }
+
+        return errorMessage;
     }
 }

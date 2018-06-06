@@ -1,13 +1,17 @@
-import { Component, createElement, ChangeEvent } from "react";
+import { Component, createElement, ChangeEvent, ReactNode } from "react";
 import * as classNames from "classnames";
+import { Alert } from "./Alert";
 
 interface SimpleCheckboxSetSelectorProps {
     alertMessage: string;
-    labelCaption: string;
+    alignment: Alignment;
     checkboxItems: CheckboxOptions[];
-    direction: Direction;
-    handleChange: (value: boolean, guid: string) => void;
+    formOrientation: Alignment;
+    handleChange: (isChecked: boolean, guid: string) => void;
+    labelCaption: string;
+    labelWidth: number;
     readOnly?: boolean;
+    showLabel: boolean;
 }
 
 interface SimpleCheckboxSetSelectorState {
@@ -21,7 +25,7 @@ export interface CheckboxOptions {
     isChecked: boolean;
 }
 
-export type Direction = "horizontal" | "vertical";
+export type Alignment = "horizontal" | "vertical";
 export type SortOrder = "asc" | "desc";
 
 export class SimpleCheckboxSetSelector extends Component<SimpleCheckboxSetSelectorProps, SimpleCheckboxSetSelectorState> {
@@ -36,9 +40,19 @@ export class SimpleCheckboxSetSelector extends Component<SimpleCheckboxSetSelect
     }
 
     render() {
+        let labelClassName = "control-label checkboxLabel";
+
         return createElement("div", { className: classNames("form-group widget-checkbox-set-selector") },
-            createElement("label", { className: classNames("control-label checkboxLabel") }, this.state.labelCaption),
-            this.createCheckboxNodes(),
+            createElement("label", {
+                className: classNames(this.formOrientation(), this.props.showLabel
+                    ? labelClassName
+                    : labelClassName += " hidden")
+            }, this.state.labelCaption),
+
+            this.props.formOrientation === "horizontal"
+                ? createElement("div", { className: "col-sm-" + (12 - this.props.labelWidth) }, this.createCheckboxNodes())
+                : this.createCheckboxNodes(),
+            this.renderAlertMessage(),
             createElement("div", { className: classNames("showmoreButton") })
         );
     }
@@ -56,7 +70,7 @@ export class SimpleCheckboxSetSelector extends Component<SimpleCheckboxSetSelect
         const { checkboxItems } = this.state;
         if (checkboxItems && checkboxItems.length > 0) {
             return checkboxItems.map(checkbox => {
-                if (this.props.direction === "horizontal") {
+                if (this.props.alignment === "horizontal") {
                     return this.checkboxLabel(checkbox.caption, checkbox.isChecked, "checkbox-inline", checkbox.guid);
                 } else {
                     return createElement("div", { className: classNames("checkbox") },
@@ -65,6 +79,19 @@ export class SimpleCheckboxSetSelector extends Component<SimpleCheckboxSetSelect
             });
         }
         return [];
+    }
+
+    private formOrientation = () => {
+        const { labelWidth } = this.props;
+        if (this.props.formOrientation === "horizontal") {
+            // width needs to be between 1 and 11
+            let checkboxLabelWidth = labelWidth < 1 ? 1 : labelWidth;
+            checkboxLabelWidth = labelWidth > 11 ? 11 : labelWidth;
+
+            return "col-sm-" + checkboxLabelWidth;
+        }
+
+        return " ";
     }
 
     private checkboxLabel = (caption: string | number | boolean, checked: boolean, className: string, guid: string) => {
@@ -78,6 +105,12 @@ export class SimpleCheckboxSetSelector extends Component<SimpleCheckboxSetSelect
             }),
             createElement("span", {}, caption)
         )
+    }
+
+    private renderAlertMessage(): ReactNode {
+        return !this.props.readOnly
+            ? createElement(Alert, { message: this.props.alertMessage })
+            : null;
     }
 
     private handleOnChange = (event: ChangeEvent<HTMLInputElement>) => {
